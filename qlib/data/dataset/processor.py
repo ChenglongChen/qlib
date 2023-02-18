@@ -359,6 +359,23 @@ class CSRankNorm(Processor):
         return df
 
 
+class CSBucketizeLabel(Processor):
+    """
+    Cross Sectional Bucketize.
+    """
+
+    def __init__(self, fields_group="label", bucket_size=10):
+        self.fields_group = fields_group
+        self.bucket_size = bucket_size
+
+    def __call__(self, df):
+        cols = get_group_columns(df, self.fields_group)
+        df[cols] = df[cols].groupby("datetime", group_keys=False).apply(
+            lambda x: pd.Series(pd.qcut(x.values.flatten(), self.bucket_size, labels=False), index=x.index)
+        )
+        return df
+
+
 class CSZFillna(Processor):
     """Cross Sectional Fill Nan"""
 
