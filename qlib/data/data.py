@@ -193,7 +193,7 @@ class CalendarProvider(abc.ABC):
         list
             list of timestamps
         """
-        raise NotImplementedError("Subclass of CalendarProvider must implement `load_calendar` method")
+        raise NotImplementedErroclassr("Subclass of CalendarProvider must implement `load_calendar` method")
 
 
 class InstrumentProvider(abc.ABC):
