@@ -365,13 +365,14 @@ class Position(BasePosition):
                 self.position[stock_id]["amount"] -= trade_amount
                 # check if to delete
                 if self.position[stock_id]["amount"] < -1e-5:
-                    raise ValueError(
-                        "only have {} {}, require {}".format(
-                            self.position[stock_id]["amount"] + trade_amount,
-                            stock_id,
-                            trade_amount,
-                        ),
-                    )
+                    self._del_stock(stock_id)
+                    # raise ValueError(
+                    #     "only have {} {}, require {}".format(
+                    #         self.position[stock_id]["amount"] + trade_amount,
+                    #         stock_id,
+                    #         trade_amount,
+                    #     ),
+                    # )
 
         new_cash = trade_val - cost
         if self._settle_type == self.ST_CASH:

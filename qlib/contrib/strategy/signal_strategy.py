@@ -135,16 +135,27 @@ class TopkDropoutStrategy(BaseSignalStrategy):
         self.only_tradable = only_tradable
         self.forbid_all_trade_at_limit = forbid_all_trade_at_limit
 
-    def generate_trade_decision(self, execute_result=None):
-        # get the number of trading step finished, trade_step can be [0, 1, 2, ..., trade_len - 1]
+    def get_pred_score(self):
         trade_step = self.trade_calendar.get_trade_step()
-        trade_start_time, trade_end_time = self.trade_calendar.get_step_time(trade_step)
         pred_start_time, pred_end_time = self.trade_calendar.get_step_time(trade_step, shift=1)
         pred_score = self.signal.get_signal(start_time=pred_start_time, end_time=pred_end_time)
         # NOTE: the current version of topk dropout strategy can't handle pd.DataFrame(multiple signal)
         # So it only leverage the first col of signal
         if isinstance(pred_score, pd.DataFrame):
             pred_score = pred_score.iloc[:, 0]
+        return pred_score
+
+    def generate_trade_decision(self, execute_result=None):
+        # get the number of trading step finished, trade_step can be [0, 1, 2, ..., trade_len - 1]
+        trade_step = self.trade_calendar.get_trade_step()
+        trade_start_time, trade_end_time = self.trade_calendar.get_step_time(trade_step)
+        pred_score = self.get_pred_score()
+        # pred_start_time, pred_end_time = self.trade_calendar.get_step_time(trade_step, shift=1)
+        # pred_score = self.signal.get_signal(start_time=pred_start_time, end_time=pred_end_time)
+        # # NOTE: the current version of topk dropout strategy can't handle pd.DataFrame(multiple signal)
+        # # So it only leverage the first col of signal
+        # if isinstance(pred_score, pd.DataFrame):
+        #     pred_score = pred_score.iloc[:, 0]
         if pred_score is None:
             return TradeDecisionWO([], self)
         if self.only_tradable:
