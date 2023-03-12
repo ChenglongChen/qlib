@@ -126,6 +126,7 @@ class TrainingVessel(TrainingVesselBase):
         buffer_size: int = 20000,
         episode_per_iter: int = 1000,
         update_kwargs: Dict[str, Any] = cast(Dict[str, Any], None),
+        exploration_noise: bool = False,
     ):
         self.simulator_fn = simulator_fn  # type: ignore
         self.state_interpreter = state_interpreter
@@ -138,6 +139,7 @@ class TrainingVessel(TrainingVesselBase):
         self.buffer_size = buffer_size
         self.episode_per_iter = episode_per_iter
         self.update_kwargs = update_kwargs or {}
+        self.exploration_noise = exploration_noise
 
     def train_seed_iterator(self) -> ContextManager[Iterable[InitialStateType]] | Iterable[InitialStateType]:
         if self.train_initial_states is not None:
@@ -168,7 +170,7 @@ class TrainingVessel(TrainingVesselBase):
         self.policy.train()
 
         with vector_env.collector_guard():
-            collector = Collector(self.policy, vector_env, VectorReplayBuffer(self.buffer_size, len(vector_env)))
+            collector = Collector(self.policy, vector_env, VectorReplayBuffer(self.buffer_size, len(vector_env)), exploration_noise=self.exploration_noise)
 
             # Number of episodes collected in each training iteration can be overridden by fast dev run.
             if self.trainer.fast_dev_run is not None:
