@@ -130,6 +130,37 @@ class TradeCalendarManager:
         calendar_index = self.start_index + trade_step - shift
         return self._calendar[calendar_index], epsilon_change(self._calendar[calendar_index + 1])
 
+    def get_step_start_time(self, trade_step: int | None = None, shift: int = 0) -> pd.Timestamp:
+        """
+        Get the left and right endpoints of the trade_step'th trading interval
+
+        About the endpoints:
+            - Qlib uses the closed interval in time-series data selection, which has the same performance as
+            pandas.Series.loc
+            # - The returned right endpoints should minus 1 seconds because of the closed interval representation in
+            #   Qlib.
+            # Note: Qlib supports up to minutely decision execution, so 1 seconds is less than any trading time
+            #   interval.
+
+        Parameters
+        ----------
+        trade_step : int, optional
+            the number of trading step finished, by default None to indicate current step
+        shift : int, optional
+            shift bars , by default 0
+
+        Returns
+        -------
+        Tuple[pd.Timestamp, pd.Timestamp]
+            - If shift == 0, return the trading time range
+            - If shift > 0, return the trading time range of the earlier shift bars
+            - If shift < 0, return the trading time range of the later shift bar
+        """
+        if trade_step is None:
+            trade_step = self.get_trade_step()
+        calendar_index = self.start_index + trade_step - shift
+        return self._calendar[calendar_index]
+
     def get_data_cal_range(self, rtype: str = "full") -> Tuple[int, int]:
         """
         get the calendar range

@@ -6,7 +6,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from typing import Dict, List, Text, Tuple, Union
+from typing import Dict, List, Optional, Text, Tuple, Union
 from abc import ABC
 
 from qlib.data import D
@@ -145,10 +145,17 @@ class TopkDropoutStrategy(BaseSignalStrategy):
             pred_score = pred_score.iloc[:, 0]
         return pred_score
 
-    def generate_trade_decision(self, execute_result=None):
-        # get the number of trading step finished, trade_step can be [0, 1, 2, ..., trade_len - 1]
-        trade_step = self.trade_calendar.get_trade_step()
-        trade_start_time, trade_end_time = self.trade_calendar.get_step_time(trade_step)
+    def generate_trade_decision(
+            self,
+            execute_result=None,
+            trade_start_time: Optional[pd.Timestamp] = None,
+            trade_end_time: Optional[pd.Timestamp] = None,
+            return_decision: bool = True
+    ):
+        if trade_start_time is None or trade_end_time is None:
+            # get the number of trading step finished, trade_step can be [0, 1, 2, ..., trade_len - 1]
+            trade_step = self.trade_calendar.get_trade_step()
+            trade_start_time, trade_end_time = self.trade_calendar.get_step_time(trade_step)
         pred_score = self.get_pred_score()
         # pred_start_time, pred_end_time = self.trade_calendar.get_step_time(trade_step, shift=1)
         # pred_score = self.signal.get_signal(start_time=pred_start_time, end_time=pred_end_time)
@@ -240,7 +247,7 @@ class TopkDropoutStrategy(BaseSignalStrategy):
 
         # Get the stock list we really want to buy
         for code in current_stock_list:
-            if not self.trade_exchange.is_stock_tradable(
+            if self.only_tradable and not self.trade_exchange.is_stock_tradable(
                 stock_id=code,
                 start_time=trade_start_time,
                 end_time=trade_end_time,
@@ -282,7 +289,7 @@ class TopkDropoutStrategy(BaseSignalStrategy):
         # value = value / (1+self.trade_exchange.open_cost) # set open_cost limit
         for code in buy:
             # check is stock suspended
-            if not self.trade_exchange.is_stock_tradable(
+            if self.only_tradable and not self.trade_exchange.is_stock_tradable(
                 stock_id=code,
                 start_time=trade_start_time,
                 end_time=trade_end_time,
@@ -304,7 +311,10 @@ class TopkDropoutStrategy(BaseSignalStrategy):
                 direction=Order.BUY,  # 1 for buy
             )
             buy_order_list.append(buy_order)
-        return TradeDecisionWO(sell_order_list + buy_order_list, self)
+        if return_decision:
+            return TradeDecisionWO(sell_order_list + buy_order_list, self)
+        else:
+            return sell_order_list + buy_order_list
 
 
 class WeightStrategyBase(BaseSignalStrategy):
