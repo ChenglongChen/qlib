@@ -109,6 +109,7 @@ def backtest(
         policy=policy,
         test_initial_states=initial_states,
         reward=cast(Reward, reward),  # ignore none
+        exploration_noise=False,
     )
     trainer = Trainer(
         finite_env_type=finite_env_type,
