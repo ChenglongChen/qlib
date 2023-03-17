@@ -8,7 +8,7 @@ import copy
 from contextlib import AbstractContextManager, contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, OrderedDict, Sequence, TypeVar, cast
+from typing import Any, Dict, Iterable, List, Optional, OrderedDict, Sequence, TypeVar, cast
 
 import torch
 
@@ -220,8 +220,8 @@ class Trainer:
             # TODO
             # Add a feature that supports reloading the training environment every few iterations.
             with _wrap_context(vessel.train_seed_iterator()) as iterator:
-                vector_env = self.venv_from_iterator(iterator)
-                self.vessel.train(vector_env)
+                vector_env = self.venv_from_iterator(iterator, self.current_stage)
+                self.vessel.train(vector_env, self.current_iter)
                 del vector_env  # FIXME: Explicitly delete this object to avoid memory leak.
 
             self._call_callback_hooks("on_train_end")
@@ -231,7 +231,7 @@ class Trainer:
                 self.current_stage = "val"
                 self._call_callback_hooks("on_validate_start")
                 with _wrap_context(vessel.val_seed_iterator()) as iterator:
-                    vector_env = self.venv_from_iterator(iterator)
+                    vector_env = self.venv_from_iterator(iterator, self.current_stage)
                     self.vessel.validate(vector_env)
                     del vector_env  # FIXME: Explicitly delete this object to avoid memory leak.
 
@@ -266,12 +266,12 @@ class Trainer:
         self.current_stage = "test"
         self._call_callback_hooks("on_test_start")
         with _wrap_context(vessel.test_seed_iterator()) as iterator:
-            vector_env = self.venv_from_iterator(iterator)
+            vector_env = self.venv_from_iterator(iterator, self.current_stage)
             self.vessel.test(vector_env)
             del vector_env  # FIXME: Explicitly delete this object to avoid memory leak.
         self._call_callback_hooks("on_test_end")
 
-    def venv_from_iterator(self, iterator: Iterable[InitialStateType]) -> FiniteVectorEnv:
+    def venv_from_iterator(self, iterator: Iterable[InitialStateType], current_stage: str) -> FiniteVectorEnv:
         """Create a vectorized environment from iterator and the training vessel."""
 
         def env_factory():
@@ -284,11 +284,11 @@ class Trainer:
                 # We could only experience the "threading-unsafe" problem in dummy.
                 state = copy.deepcopy(self.vessel.state_interpreter)
                 action = copy.deepcopy(self.vessel.action_interpreter)
-                rew = copy.deepcopy(self.vessel.reward)
+                rew = copy.deepcopy(self.vessel.val_reward if current_stage in ["val","test"] else self.vessel.reward)
             else:
                 state = self.vessel.state_interpreter
                 action = self.vessel.action_interpreter
-                rew = self.vessel.reward
+                rew = self.vessel.val_reward if current_stage in ["val","test"] else self.vessel.reward
 
             return EnvWrapper(
                 self.vessel.simulator_fn,

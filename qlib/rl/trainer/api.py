@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Sequence, cast
+from typing import Any, Callable, Dict, List, Optional, Sequence, cast
 
 from tianshou.policy import BasePolicy
 
@@ -23,6 +23,7 @@ def train(
     initial_states: Sequence[InitialStateType],
     policy: BasePolicy,
     reward: Reward,
+    val_reward: Reward,
     vessel_kwargs: Dict[str, Any],
     trainer_kwargs: Dict[str, Any],
 ) -> None:
@@ -44,6 +45,8 @@ def train(
         Policy to train against.
     reward
         Reward function.
+    val_reward
+        Reward function for validation.
     vessel_kwargs
         Keyword arguments passed to :class:`TrainingVessel`, like ``episode_per_iter``.
     trainer_kwargs
@@ -57,6 +60,7 @@ def train(
         policy=policy,
         train_initial_states=initial_states,
         reward=reward,  # ignore none
+        val_reward=val_reward,
         **vessel_kwargs,
     )
     trainer = Trainer(**trainer_kwargs)
@@ -110,6 +114,7 @@ def backtest(
         test_initial_states=initial_states,
         reward=cast(Reward, reward),  # ignore none
         exploration_noise=False,
+        start_episodes=None,
     )
     trainer = Trainer(
         finite_env_type=finite_env_type,

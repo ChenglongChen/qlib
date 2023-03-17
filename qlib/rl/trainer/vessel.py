@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import weakref
-from typing import TYPE_CHECKING, Any, Callable, ContextManager, Dict, Generic, Iterable, Sequence, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, ContextManager, Dict, Generic, Iterable, Optional, Sequence, TypeVar, cast
 
 import numpy as np
 from tianshou.data import Collector, VectorReplayBuffer
@@ -44,6 +44,7 @@ class TrainingVesselBase(Generic[InitialStateType, StateType, ActType, ObsType, 
     action_interpreter: ActionInterpreter[StateType, PolicyActType, ActType]
     policy: BasePolicy
     reward: Reward
+    val_reward: Reward
     trainer: Trainer
 
     def assign_trainer(self, trainer: Trainer) -> None:
@@ -63,7 +64,7 @@ class TrainingVesselBase(Generic[InitialStateType, StateType, ActType, ObsType, 
         """Override this to create a seed iterator for testing."""
         raise SeedIteratorNotAvailable("Seed iterator for testing is not available.")
 
-    def train(self, vector_env: BaseVectorEnv) -> Dict[str, Any]:
+    def train(self, vector_env: BaseVectorEnv, current_iter: int) -> Dict[str, Any]:
         """Implement this to train one iteration. In RL, one iteration usually refers to one collect."""
         raise NotImplementedError()
 
@@ -120,6 +121,7 @@ class TrainingVessel(TrainingVesselBase):
         action_interpreter: ActionInterpreter[StateType, PolicyActType, ActType],
         policy: BasePolicy,
         reward: Reward,
+        val_reward: Optional[Reward] = None,
         train_initial_states: Sequence[InitialStateType] | None = None,
         val_initial_states: Sequence[InitialStateType] | None = None,
         test_initial_states: Sequence[InitialStateType] | None = None,
@@ -127,12 +129,14 @@ class TrainingVessel(TrainingVesselBase):
         episode_per_iter: int = 1000,
         update_kwargs: Dict[str, Any] = cast(Dict[str, Any], None),
         exploration_noise: bool = False,
+        start_episodes: Optional[int] = None
     ):
         self.simulator_fn = simulator_fn  # type: ignore
         self.state_interpreter = state_interpreter
         self.action_interpreter = action_interpreter
         self.policy = policy
         self.reward = reward
+        self.val_reward = val_reward if val_reward else reward
         self.train_initial_states = train_initial_states
         self.val_initial_states = val_initial_states
         self.test_initial_states = test_initial_states
@@ -140,6 +144,7 @@ class TrainingVessel(TrainingVesselBase):
         self.episode_per_iter = episode_per_iter
         self.update_kwargs = update_kwargs or {}
         self.exploration_noise = exploration_noise
+        self.start_episodes = start_episodes
 
     def train_seed_iterator(self) -> ContextManager[Iterable[InitialStateType]] | Iterable[InitialStateType]:
         if self.train_initial_states is not None:
@@ -163,7 +168,7 @@ class TrainingVessel(TrainingVesselBase):
             return DataQueue(test_initial_states, repeat=1)
         return super().test_seed_iterator()
 
-    def train(self, vector_env: FiniteVectorEnv) -> Dict[str, Any]:
+    def train(self, vector_env: FiniteVectorEnv, current_iter: int) -> Dict[str, Any]:
         """Create a collector and collects ``episode_per_iter`` episodes.
         Update the policy on the collected replay buffer.
         """
@@ -178,6 +183,8 @@ class TrainingVessel(TrainingVesselBase):
             else:
                 episodes = self.episode_per_iter
 
+            if self.start_episodes and current_iter == 0:
+                collector.collect(n_episode=self.start_episodes, random=True)
             col_result = collector.collect(n_episode=episodes)
             update_result = self.policy.update(sample_size=0, buffer=collector.buffer, **self.update_kwargs)
             res = {**col_result, **update_result}
