@@ -284,10 +284,12 @@ class Trainer:
                 # We could only experience the "threading-unsafe" problem in dummy.
                 state = copy.deepcopy(self.vessel.state_interpreter)
                 action = copy.deepcopy(self.vessel.action_interpreter)
+                aux_info_collector = copy.deepcopy(self.vessel.aux_info_collector)
                 rew = copy.deepcopy(self.vessel.val_reward if current_stage in ["val","test"] else self.vessel.reward)
             else:
                 state = self.vessel.state_interpreter
                 action = self.vessel.action_interpreter
+                aux_info_collector = self.vessel.aux_info_collector
                 rew = self.vessel.val_reward if current_stage in ["val","test"] else self.vessel.reward
 
             return EnvWrapper(
@@ -296,6 +298,7 @@ class Trainer:
                 action,
                 iterator,
                 rew,
+                aux_info_collector=aux_info_collector,
                 logger=LogCollector(min_loglevel=self._min_loglevel()),
             )
 

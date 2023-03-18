@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, cast
 
 from tianshou.policy import BasePolicy
 
+from qlib.rl.aux_info import AuxiliaryInfoCollector
 from qlib.rl.interpreter import ActionInterpreter, StateInterpreter
 from qlib.rl.reward import Reward
 from qlib.rl.simulator import InitialStateType, Simulator
@@ -20,6 +21,7 @@ def train(
     simulator_fn: Callable[[InitialStateType], Simulator],
     state_interpreter: StateInterpreter,
     action_interpreter: ActionInterpreter,
+    aux_info_collector: AuxiliaryInfoCollector,
     initial_states: Sequence[InitialStateType],
     policy: BasePolicy,
     reward: Reward,
@@ -57,6 +59,7 @@ def train(
         simulator_fn=simulator_fn,
         state_interpreter=state_interpreter,
         action_interpreter=action_interpreter,
+        aux_info_collector=aux_info_collector,
         policy=policy,
         train_initial_states=initial_states,
         reward=reward,  # ignore none
@@ -71,6 +74,7 @@ def backtest(
     simulator_fn: Callable[[InitialStateType], Simulator],
     state_interpreter: StateInterpreter,
     action_interpreter: ActionInterpreter,
+    aux_info_collector: AuxiliaryInfoCollector,
     initial_states: Sequence[InitialStateType],
     policy: BasePolicy,
     logger: LogWriter | List[LogWriter],
@@ -110,6 +114,7 @@ def backtest(
         simulator_fn=simulator_fn,
         state_interpreter=state_interpreter,
         action_interpreter=action_interpreter,
+        aux_info_collector=aux_info_collector,
         policy=policy,
         test_initial_states=initial_states,
         reward=cast(Reward, reward),  # ignore none

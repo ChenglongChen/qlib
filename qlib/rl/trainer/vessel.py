@@ -13,6 +13,7 @@ from tianshou.policy import BasePolicy
 
 from qlib.constant import INF
 from qlib.log import get_module_logger
+from qlib.rl.aux_info import AuxiliaryInfoCollector
 from qlib.rl.interpreter import ActionInterpreter, ActType, ObsType, PolicyActType, StateInterpreter, StateType
 from qlib.rl.reward import Reward
 from qlib.rl.simulator import InitialStateType, Simulator
@@ -45,6 +46,7 @@ class TrainingVesselBase(Generic[InitialStateType, StateType, ActType, ObsType, 
     policy: BasePolicy
     reward: Reward
     val_reward: Reward
+    aux_info_collector: AuxiliaryInfoCollector = None
     trainer: Trainer
 
     def assign_trainer(self, trainer: Trainer) -> None:
@@ -121,6 +123,7 @@ class TrainingVessel(TrainingVesselBase):
         action_interpreter: ActionInterpreter[StateType, PolicyActType, ActType],
         policy: BasePolicy,
         reward: Reward,
+        aux_info_collector: Optional[AuxiliaryInfoCollector] = None,
         val_reward: Optional[Reward] = None,
         train_initial_states: Sequence[InitialStateType] | None = None,
         val_initial_states: Sequence[InitialStateType] | None = None,
@@ -137,6 +140,7 @@ class TrainingVessel(TrainingVesselBase):
         self.policy = policy
         self.reward = reward
         self.val_reward = val_reward if val_reward else reward
+        self.aux_info_collector = aux_info_collector
         self.train_initial_states = train_initial_states
         self.val_initial_states = val_initial_states
         self.test_initial_states = test_initial_states
@@ -186,7 +190,7 @@ class TrainingVessel(TrainingVesselBase):
             if self.start_episodes and current_iter == 0:
                 collector.collect(n_episode=self.start_episodes, random=True)
             col_result = collector.collect(n_episode=episodes)
-            update_result = self.policy.update(sample_size=0, buffer=collector.buffer, **self.update_kwargs)
+            update_result = self.policy.update(sample_size=0, buffer=collector.buffer, current_iter=current_iter, **self.update_kwargs)
             res = {**col_result, **update_result}
             self.log_dict(res)
             return res
