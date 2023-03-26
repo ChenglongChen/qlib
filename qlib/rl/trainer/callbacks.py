@@ -47,6 +47,12 @@ class Callback:
         and post-process them in this hook.
         """
 
+    def on_validate_train_start(self, trainer: Trainer, vessel: TrainingVesselBase) -> None:
+        """Called when every run for validation of train begins."""
+
+    def on_validate_train_end(self, trainer: Trainer, vessel: TrainingVesselBase) -> None:
+        """Called when the validation of train ends."""
+
     def on_validate_start(self, trainer: Trainer, vessel: TrainingVesselBase) -> None:
         """Called when every run for validation begins."""
 
@@ -189,11 +195,16 @@ class MetricsWriter(Callback):
         self.dirpath = dirpath
         self.dirpath.mkdir(exist_ok=True, parents=True)
         self.train_records: List[dict] = []
+        self.valid_train_records: List[dict] = []
         self.valid_records: List[dict] = []
 
     def on_train_end(self, trainer: Trainer, vessel: TrainingVesselBase) -> None:
-        self.train_records.append({k: v for k, v in trainer.metrics.items() if not k.startswith("val/")})
+        self.train_records.append({k: v for k, v in trainer.metrics.items() if not k.startswith("val/") and not k.startswith("val_train/")})
         pd.DataFrame.from_records(self.train_records).to_csv(self.dirpath / "train_result.csv", index=True)
+
+    def on_validate_train_end(self, trainer: Trainer, vessel: TrainingVesselBase) -> None:
+        self.valid_train_records.append({k: v for k, v in trainer.metrics.items() if k.startswith("val_train/")})
+        pd.DataFrame.from_records(self.valid_train_records).to_csv(self.dirpath / "validation_train_result.csv", index=True)
 
     def on_validate_end(self, trainer: Trainer, vessel: TrainingVesselBase) -> None:
         self.valid_records.append({k: v for k, v in trainer.metrics.items() if k.startswith("val/")})

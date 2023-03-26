@@ -52,7 +52,7 @@ class TrainingVesselBase(Generic[InitialStateType, StateType, ActType, ObsType, 
     def assign_trainer(self, trainer: Trainer) -> None:
         self.trainer = weakref.proxy(trainer)  # type: ignore
 
-    def train_seed_iterator(self) -> ContextManager[Iterable[InitialStateType]] | Iterable[InitialStateType]:
+    def train_seed_iterator(self, repeat: int = -1, shuffle: bool = True) -> ContextManager[Iterable[InitialStateType]] | Iterable[InitialStateType]:
         """Override this to create a seed iterator for training.
         If the iterable is a context manager, the whole training will be invoked in the with-block,
         and the iterator will be automatically closed after the training is done."""
@@ -150,12 +150,12 @@ class TrainingVessel(TrainingVesselBase):
         self.exploration_noise = exploration_noise
         self.start_episodes = start_episodes
 
-    def train_seed_iterator(self) -> ContextManager[Iterable[InitialStateType]] | Iterable[InitialStateType]:
+    def train_seed_iterator(self, repeat: int = -1, shuffle: bool = True) -> ContextManager[Iterable[InitialStateType]] | Iterable[InitialStateType]:
         if self.train_initial_states is not None:
             _logger.info("Training initial states collection size: %d", len(self.train_initial_states))
             # Implement fast_dev_run here.
             train_initial_states = self._random_subset("train", self.train_initial_states, self.trainer.fast_dev_run)
-            return DataQueue(train_initial_states, repeat=-1, shuffle=True)
+            return DataQueue(train_initial_states, repeat=repeat, shuffle=shuffle)
         return super().train_seed_iterator()
 
     def val_seed_iterator(self) -> ContextManager[Iterable[InitialStateType]] | Iterable[InitialStateType]:

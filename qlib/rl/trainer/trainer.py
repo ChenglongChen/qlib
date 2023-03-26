@@ -93,6 +93,7 @@ class Trainer:
         *,
         max_iters: int | None = None,
         val_every_n_iters: int | None = None,
+        val_train: bool = False,
         loggers: LogWriter | List[LogWriter] | None = None,
         callbacks: List[Callback] | None = None,
         finite_env_type: FiniteEnvType = "subproc",
@@ -101,6 +102,7 @@ class Trainer:
     ):
         self.max_iters = max_iters
         self.val_every_n_iters = val_every_n_iters
+        self.val_train = val_train
 
         if isinstance(loggers, list):
             self.loggers = loggers
@@ -228,13 +230,21 @@ class Trainer:
 
             if self.val_every_n_iters is not None and (self.current_iter + 1) % self.val_every_n_iters == 0:
                 # Implementation of validation loop
+                if self.val_train:
+                    self.current_stage = "val_train"
+                    self._call_callback_hooks("on_validate_train_start")
+                    with _wrap_context(vessel.train_seed_iterator(repeat=1, shuffle=False)) as iterator:
+                        vector_env = self.venv_from_iterator(iterator, self.current_stage)
+                        self.vessel.validate(vector_env)
+                        del vector_env  # FIXME: Explicitly delete this object to avoid memory leak.
+                    self._call_callback_hooks("on_validate_train_end")
+
                 self.current_stage = "val"
                 self._call_callback_hooks("on_validate_start")
                 with _wrap_context(vessel.val_seed_iterator()) as iterator:
                     vector_env = self.venv_from_iterator(iterator, self.current_stage)
                     self.vessel.validate(vector_env)
                     del vector_env  # FIXME: Explicitly delete this object to avoid memory leak.
-
                 self._call_callback_hooks("on_validate_end")
 
             # This iteration is considered complete.
@@ -285,12 +295,12 @@ class Trainer:
                 state = copy.deepcopy(self.vessel.state_interpreter)
                 action = copy.deepcopy(self.vessel.action_interpreter)
                 aux_info_collector = copy.deepcopy(self.vessel.aux_info_collector)
-                rew = copy.deepcopy(self.vessel.val_reward if current_stage in ["val","test"] else self.vessel.reward)
+                rew = copy.deepcopy(self.vessel.val_reward if current_stage in ["val","val_train","test"] else self.vessel.reward)
             else:
                 state = self.vessel.state_interpreter
                 action = self.vessel.action_interpreter
                 aux_info_collector = self.vessel.aux_info_collector
-                rew = self.vessel.val_reward if current_stage in ["val","test"] else self.vessel.reward
+                rew = self.vessel.val_reward if current_stage in ["val","val_train","test"] else self.vessel.reward
 
             return EnvWrapper(
                 self.vessel.simulator_fn,
@@ -317,8 +327,8 @@ class Trainer:
         elif on_collect:
             # Update the latest metrics.
             metrics = log_buffer.collect_metrics()
-        if self.current_stage == "val":
-            metrics = {"val/" + name: value for name, value in metrics.items()}
+        if self.current_stage in ["val", "val_train"]:
+            metrics = {f"{self.current_stage}/" + name: value for name, value in metrics.items()}
         self.metrics.update(metrics)
 
     def _call_callback_hooks(self, hook_name: str, *args: Any, **kwargs: Any) -> None:
