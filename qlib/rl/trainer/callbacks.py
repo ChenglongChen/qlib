@@ -269,7 +269,7 @@ class Checkpoint(Callback):
 
     def on_iter_end(self, trainer: Trainer, vessel: TrainingVesselBase) -> None:
         should_save_ckpt = False
-        if self.every_n_iters is not None and (trainer.current_iter + 1) % self.every_n_iters == 0:
+        if self.every_n_iters is not None and trainer.current_iter % self.every_n_iters == 0:
             should_save_ckpt = True
         if self.time_interval is not None and (
             self._last_checkpoint_time is None or (time.time() - self._last_checkpoint_time) >= self.time_interval

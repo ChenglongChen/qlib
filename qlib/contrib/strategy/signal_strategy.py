@@ -314,7 +314,7 @@ class TopkDropoutStrategy(BaseSignalStrategy):
         if return_decision:
             return TradeDecisionWO(sell_order_list + buy_order_list, self)
         else:
-            return sell_order_list + buy_order_list
+            return sell_order_list, buy_order_list
 
 
 class WeightStrategyBase(BaseSignalStrategy):
