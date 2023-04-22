@@ -102,6 +102,7 @@ class EnvWrapper(
         reward_fn: Reward | None = None,
         aux_info_collector: AuxiliaryInfoCollector[StateType, Any] | None = None,
         logger: LogCollector | None = None,
+        is_eval: bool = False
     ) -> None:
         # Assign weak reference to wrapper.
         #
@@ -134,6 +135,7 @@ class EnvWrapper(
         self.aux_info_collector = aux_info_collector
         self.logger: LogCollector = logger or LogCollector()
         self.status: EnvWrapperStatus = cast(EnvWrapperStatus, None)
+        self.is_eval = is_eval
 
     @property
     def action_space(self) -> Space:
@@ -164,10 +166,10 @@ class EnvWrapper(
             if self.seed_iterator is SEED_INTERATOR_MISSING:
                 # no initial state
                 initial_state = None
-                self.simulator = cast(Callable[[], Simulator], self.simulator_fn)()
+                self.simulator = cast(Callable[[], Simulator], self.simulator_fn)(self.is_eval)
             else:
                 initial_state = next(cast(Iterator[InitialStateType], self.seed_iterator))
-                self.simulator = self.simulator_fn(initial_state)
+                self.simulator = self.simulator_fn(initial_state, self.is_eval)
 
             self.status = EnvWrapperStatus(
                 cur_step=0,

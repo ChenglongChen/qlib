@@ -310,6 +310,7 @@ class Trainer:
                 rew,
                 aux_info_collector=aux_info_collector,
                 logger=LogCollector(min_loglevel=self._min_loglevel()),
+                is_eval=current_stage in ["val","val_train","test"]
             )
 
         return vectorize_env(
